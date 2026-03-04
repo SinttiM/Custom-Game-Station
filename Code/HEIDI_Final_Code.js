@@ -51,6 +51,18 @@ var sideBtnCommands = {
 };
 
 //
+//hardcoded pulse patterns for the LED to indicate button press pattern.
+//
+var btnPulsePatterns = {
+  "S": [50],
+  "SS": [50,30,50],
+  "SL": [50,30,150],
+  "LS": [150,30,50],
+  "L": [150],
+  "LL": [150,30,150],
+}
+
+//
 // Persistent commands
 //
 var defaultStoreCommands = { "S":"AT CL", "SS":"AT CD", "L":"AT CR" };
@@ -99,16 +111,20 @@ NRF.setAdvertising([
 //
 // HID helpers
 //
-function moveMouseAction(x, y, b) { try { HID.moveMouse(x,y,b); } catch(e){} }
-function clickButtonAction(b) { try { HID.clickButton(b); } catch(e){} }
-function tapKeyAction(k) { try { HID.tapKey(k); } catch(e){} }
-function holdKeyAction(k) { try { HID.keyDown(k); } catch(e){} }
-function releaseKeyAction(k) { try { HID.keyUp(k); } catch(e){} }
+//function moveMouseAction(x, y, b) { try { HID.moveMouse(x,y,b); } catch(e){ digitalPulse(LED1,1,10); digitalPulse(LED2,1,10); digitalPulse(LED3,1,10);} }
+function moveMouseAction(x, y, b) { try { HID.moveMouse(x,y,b); } catch(e){ digitalPulse(LED1,1,[10]); } }
+function clickButtonAction(b) { try { HID.clickButton(b); } catch(e){digitalPulse(LED1,1,[10]); } }
+function tapKeyAction(k) { try { HID.tapKey(k); } catch(e){digitalPulse(LED1,1,[10]); } }
+function holdKeyAction(k) { try { HID.keyDown(k); } catch(e){digitalPulse(LED1,1,[10]); } }
+function releaseKeyAction(k) { try { HID.keyUp(k); } catch(e){digitalPulse(LED1,1,[10]); } }
 
 //
 // Direct action executor (for physical buttons)
 //
-function executeAction(action) {
+function executeAction(pressPattern, action, pinBtn) {
+  console.log("button: "+ (pinBtn == pinSideBtn ? "Side Btn" : "Top Btn")+", pattern: "+pressPattern+", action: "+action);
+  digitalPulse(pinBtn == pinSideBtn ? LED2 : LED3, 1, btnPulsePatterns[pressPattern]);
+
   if (!action) return;
 
   if (action === "CL") clickButtonAction(HID.BUTTON.LEFT);
@@ -133,8 +149,12 @@ function executeAction(action) {
 //
 // Buttons
 //
-var sideBtn = new SWBtn(k => executeAction(sideBtnCommands[k]), pinSideBtn);
-var topBtn  = new SWBtn(k => executeAction(topBtnCommands[k]),  pinTopBtn);
+var sideBtn = new SWBtn(k => executeAction(k, sideBtnCommands[k], pinSideBtn), pinSideBtn);
+var topBtn  = new SWBtn(k => executeAction(k, topBtnCommands[k], pinTopBtn),  pinTopBtn);
+
+// Buttons: setWatch function: useful for debugging electrical issues
+//setWatch(function(e) { console.log("sideBtn"); digitalPulse(LED1, 1, 200); }, pinSideBtn, { repeat:true, edge:'falling' });
+//setWatch(function(e) { console.log("topBtn"); digitalPulse(LED2, 1, 200);}, pinTopBtn, { repeat:true, edge:'falling' });
 
 //
 // Modes
@@ -216,7 +236,7 @@ function updateMouseMovementDegree(a) {
 // Tilt polling
 //
 var tiltInterval;
-const mouseMoveInterval = 50;
+const mouseMoveInterval = 100;
 
 function startTilt() {
   if (tiltInterval) return;
@@ -236,15 +256,26 @@ function stopTilt() {
 //
 // BLE events
 //
-NRF.on('connect', function () {
-  initAHRS();
-  startTilt();
+NRF.on('connect', function (addr) {  
+  console.log("Connected to:", addr);
   digitalPulse(LED2,1,300);
+  // Disable security for simplicity
+  NRF.setSecurity({ mitm: false, display: false, keyboard: false });
+
+  // Enable accelerometer with default frequency (26Hz) only when connected
+  initAHRS();
+  Puck.accelOn(26);  
+  startTilt();
 });
 
-NRF.on('disconnect', function () {
-  stopTilt();
+NRF.on('disconnect', function (reason) {
+  console.log("Disconnected, reason:", reason);
   digitalPulse(LED3,1,300);
+  digitalWrite([LED1,LED2,LED3],0);
+
+  // Turn off accelerometer to save power when not connected
+  Puck.accelOff();  
+  stopTilt();
 });
 
 //
@@ -252,4 +283,7 @@ NRF.on('disconnect', function () {
 //
 loadStoredCommands();
 NRF.setConnectionInterval(100);
+digitalPulse(LED1,1,[500,100,500,100,500]);
+digitalPulse(LED2,1,[500,100,500,100,500]);
+digitalPulse(LED3,1,[500,100,500,100,500]);
 console.log("Puck.js ready (final version)");
