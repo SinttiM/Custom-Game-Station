@@ -9,7 +9,7 @@ const DEBUG = 0;
 //
 var HID = require("ble_hid_combo");
 var eddystone = require("ble_eddystone");
-var SWBtn = require("SWBtn");
+var SWBtn = require("SWBtn.js");
 var AHRS = require("https://inclusion-international.github.io/Wheely-Joystick-Mouse/src/Espruino/AHRS.js");
 
 //
@@ -24,7 +24,7 @@ if (!HID.KEY.Tab) {
 //
 
 //ORIGINAL
-var pinTopBtn  = D31;
+var pinTopBtn = D31;
 var pinSideBtn = D1;
 
 //FOR TESTING
@@ -32,7 +32,7 @@ var pinSideBtn = D1;
 //var pinSideBtn = D31;
 
 
-pinMode(pinTopBtn,  "input_pullup");
+pinMode(pinTopBtn, "input_pullup");
 pinMode(pinSideBtn, "input_pullup");
 
 //
@@ -42,7 +42,7 @@ var topBtnCommands = {
   //"S":  "CR",
   //"SS": "KP TAB",
   "S": "KP TAB",
-  "L":  "CAL"
+  "L": "CAL"
 };
 
 var sideBtnCommands = {
@@ -55,18 +55,18 @@ var sideBtnCommands = {
 //
 var btnPulsePatterns = {
   "S": [50],
-  "SS": [50,30,50],
-  "SL": [50,30,150],
-  "LS": [150,30,50],
+  "SS": [50, 30, 50],
+  "SL": [50, 30, 150],
+  "LS": [150, 30, 50],
   "L": [150],
-  "LL": [150,30,150],
+  "LL": [150, 30, 150],
 }
 
 //
 // Persistent commands
 //
-var defaultStoreCommands = { "S":"AT CL", "SS":"AT CD", "L":"AT CR" };
-var storeCommands = { "S":"", "SS":"", "L":"" };
+var defaultStoreCommands = { "S": "AT CL", "SS": "AT CD", "L": "AT CR" };
+var storeCommands = { "S": "", "SS": "", "L": "" };
 
 function loadStoredCommands() {
   var stored = require("Storage").read("storeCommands");
@@ -78,7 +78,7 @@ function loadStoredCommands() {
 }
 
 function storeCommand(cmd, type) {
-  if (!["S","SS","L"].includes(type)) return;
+  if (!["S", "SS", "L"].includes(type)) return;
   storeCommands[type] = String(cmd).trim();
   require("Storage").write("storeCommands", JSON.stringify(storeCommands));
 }
@@ -104,7 +104,7 @@ NRF.setServices({
 
 NRF.setAdvertising([
   {},
-  [2,1,6, 3,3,0x12,0x18, 3,0x19,0xc0,0x03],
+  [2, 1, 6, 3, 3, 0x12, 0x18, 3, 0x19, 0xc0, 0x03],
   [eddystone.get("https://l1nq.com/jtNjc")]
 ]);
 
@@ -112,18 +112,18 @@ NRF.setAdvertising([
 // HID helpers
 //
 //function moveMouseAction(x, y, b) { try { HID.moveMouse(x,y,b); } catch(e){ digitalPulse(LED1,1,10); digitalPulse(LED2,1,10); digitalPulse(LED3,1,10);} }
-function moveMouseAction(x, y, b) { try { HID.moveMouse(x,y,b); } catch(e){ digitalPulse(LED1,1,[10]); } }
-function clickButtonAction(b) { try { HID.clickButton(b); } catch(e){digitalPulse(LED1,1,[10]); } }
-function tapKeyAction(k) { try { HID.tapKey(k); } catch(e){digitalPulse(LED1,1,[10]); } }
-function holdKeyAction(k) { try { HID.keyDown(k); } catch(e){digitalPulse(LED1,1,[10]); } }
-function releaseKeyAction(k) { try { HID.keyUp(k); } catch(e){digitalPulse(LED1,1,[10]); } }
-function releaseKeyAllAction() { try { HID.keyUp(HID.KEY.ALL); } catch(e){digitalPulse(LED1,1,[10]);digitalPulse(LED2,1,[10]); } }
+function moveMouseAction(x, y, b) { try { HID.moveMouse(x, y, b); } catch (e) { digitalPulse(LED1, 1, [10]); } }
+function clickButtonAction(b) { try { HID.clickButton(b); } catch (e) { digitalPulse(LED1, 1, [10]); } }
+function tapKeyAction(k) { try { HID.tapKey(k); } catch (e) { digitalPulse(LED1, 1, [10]); } }
+function holdKeyAction(k) { try { HID.keyDown(k); } catch (e) { digitalPulse(LED1, 1, [10]); } }
+function releaseKeyAction(k) { try { HID.keyUp(k); } catch (e) { digitalPulse(LED1, 1, [10]); } }
+function releaseKeyAllAction() { try { HID.keyUp(HID.KEY.ALL); } catch (e) { digitalPulse(LED1, 1, [10]); digitalPulse(LED2, 1, [10]); } }
 
 //
 // Direct action executor (for physical buttons)
 //
 function executeAction(pressPattern, action, pinBtn) {
-  console.log("button: "+ (pinBtn == pinSideBtn ? "Side Btn" : "Top Btn")+", pattern: "+pressPattern+", action: "+action);
+  console.log("button: " + (pinBtn == pinSideBtn ? "Side Btn" : "Top Btn") + ", pattern: " + pressPattern + ", action: " + action);
   digitalPulse(pinBtn == pinSideBtn ? LED2 : LED3, 1, btnPulsePatterns[pressPattern]);
 
   if (!action) return;
@@ -151,7 +151,7 @@ function executeAction(pressPattern, action, pinBtn) {
 // Buttons
 //
 var sideBtn = new SWBtn(k => executeAction(k, sideBtnCommands[k], pinSideBtn), pinSideBtn);
-var topBtn  = new SWBtn(k => executeAction(k, topBtnCommands[k], pinTopBtn),  pinTopBtn);
+var topBtn = new SWBtn(k => executeAction(k, topBtnCommands[k], pinTopBtn), pinTopBtn);
 
 // Buttons: setWatch function: useful for debugging electrical issues
 //setWatch(function(e) { console.log("sideBtn"); digitalPulse(LED1, 1, 200); }, pinSideBtn, { repeat:true, edge:'falling' });
@@ -160,7 +160,7 @@ var topBtn  = new SWBtn(k => executeAction(k, topBtnCommands[k], pinTopBtn),  pi
 //
 // Modes
 //
-const InputMode = { MOUSE:0, MOVEMENT:1 };
+const InputMode = { MOUSE: 0, MOVEMENT: 1 };
 var currentMode = InputMode.MOUSE;
 
 function changeMode() {
@@ -171,7 +171,7 @@ function changeMode() {
   // Change modality
   currentMode = (currentMode === InputMode.MOUSE) ? InputMode.MOVEMENT : InputMode.MOUSE;
   //show current mode with LED indicators
-  (currentMode === InputMode.MOUSE) ? digitalPulse(LED2,1,[800,100,800,100,800]) : digitalPulse(LED3,1,[800,100,800,100,800]);
+  (currentMode === InputMode.MOUSE) ? digitalPulse(LED2, 1, [800, 100, 800, 100, 800]) : digitalPulse(LED3, 1, [800, 100, 800, 100, 800]);
   stopTilt();
   startTilt(mode2Interval[currentMode]);
 }
@@ -194,7 +194,7 @@ function calibrateMouse() {
 //
 function updateMouseMovementDegree(a) {
   let dx = a.pitch - x_calib;
-  let dy = a.roll  - y_calib;
+  let dy = a.roll - y_calib;
   //let speed=10;
   const sensitivity = 10; // Adjust sensitivity as needed (lower value = higher sensitivity)
   const max_speed = 25;
@@ -217,14 +217,14 @@ function updateMouseMovementDegree(a) {
 
   else { // MOVEMENT
     //releaseKeyAllAction();
-    let holdKey=-1;
-    if (dy > 0) { holdKey=HID.KEY.S; }
-    else if (dy < 0) { holdKey=HID.KEY.W; }
+    let holdKey = -1;
+    if (dy > 0) { holdKey = HID.KEY.S; }
+    else if (dy < 0) { holdKey = HID.KEY.W; }
 
-    if (dx > 0) { holdKey=HID.KEY.D; }
-    else if (dx < 0) { holdKey=HID.KEY.A; }
+    if (dx > 0) { holdKey = HID.KEY.D; }
+    else if (dx < 0) { holdKey = HID.KEY.A; }
 
-    if(holdKey>0) { holdKeyAction(holdKey); } else { releaseKeyAllAction();}
+    if (holdKey > 0) { holdKeyAction(holdKey); } else { releaseKeyAllAction(); }
   }
 }
 
@@ -235,12 +235,12 @@ var tiltInterval;
 //use two different intervals [ms] as in keyboard movement mode we hold keys anyway
 const mouseMoveInterval = 25;
 const keyboardMoveInterval = 250;
-const mode2Interval=[mouseMoveInterval,keyboardMoveInterval];
+const mode2Interval = [mouseMoveInterval, keyboardMoveInterval];
 
 function startTilt(updateInterval) {
   //if (tiltInterval) return;
   stopTilt();
-  
+
   tiltInterval = setInterval(() => {
     let o = AHRS.getOrientationDegree();
     updateMouseMovementDegree(o);
@@ -257,9 +257,9 @@ function stopTilt() {
 //
 // BLE events
 //
-NRF.on('connect', function (addr) {  
+NRF.on('connect', function (addr) {
   console.log("Connected to:", addr);
-  digitalPulse(LED2,1,300);
+  digitalPulse(LED2, 1, 300);
   // Disable security for simplicity
   NRF.setSecurity({ mitm: false, display: false, keyboard: false });
 
@@ -270,8 +270,8 @@ NRF.on('connect', function (addr) {
 
 NRF.on('disconnect', function (reason) {
   console.log("Disconnected, reason:", reason);
-  digitalPulse(LED3,1,300);
-  digitalWrite([LED1,LED2,LED3],0);
+  digitalPulse(LED3, 1, 300);
+  digitalWrite([LED1, LED2, LED3], 0);
 
   // Turn off accelerometer to save power when not connected
   Puck.accelOff();
@@ -283,7 +283,7 @@ NRF.on('disconnect', function (reason) {
 //
 loadStoredCommands();
 NRF.setConnectionInterval(100);
-digitalPulse(LED1,1,[500,100,500,100,500]);
-digitalPulse(LED2,1,[500,100,500,100,500]);
-digitalPulse(LED3,1,[500,100,500,100,500]);
+digitalPulse(LED1, 1, [500, 100, 500, 100, 500]);
+digitalPulse(LED2, 1, [500, 100, 500, 100, 500]);
+digitalPulse(LED3, 1, [500, 100, 500, 100, 500]);
 console.log("Puck.js ready (final version)");
