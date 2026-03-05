@@ -6,7 +6,7 @@ If you have a new puck.js, you will have to flash the firmware onto it. You can 
 
 1. Open the [Espruino Web IDE](https://www.espruino.com/ide/) in your browser **with Web Bluetooth support** (e.g. Chrome).
 2. **Connect** the Puck.js in the IDE via Web Bluetooth (Top-left button: <img alt="" src="wb-icon.png" width="5%"/>)
-4. **Open** the firmware [main.js]([src/espruino/main.js](https://inclusion-international.github.io/Custom-Game-Station/src/espruino/main.js)) in the Espruino Web IDE.
+4. **Open** the firmware [main.js](https://inclusion-international.github.io/Custom-Game-Station/src/espruino/main.js) in the Espruino Web IDE.
 5. **Click** the "**Send to Espruino (Flash)** <img alt="" src="send-flash.png" width="5%"/>" button in the IDE to upload the firmware to your Puck.js.
    1. When the process is done, a message should appear in the console log on the left side.
 6. **Disconnect** Puck.js from the Espruino IDE.
