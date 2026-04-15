@@ -56,3 +56,99 @@ This solution is composed of 1 Puck.js microcontroller (in Joystick), which coul
 * [User Manual](User%20Manual/)
 * [CAD files](CAD%20Files/)
 
+
+**VERSION 2.0**
+
+Architecture diagram
+
+High-level
+
+ ┌──────────────────┐        BLE         ┌────────────────────┐        BLE         ┌────────────────────────┐
+ │   Puck.js Button  │ ─────────────────▶ │  Joystick Unit      │ ─────────────────▶ │   XIAO nRF52840 Sense   │
+ │ (BLE Peripheral)  │                    │ (BLE Central +      │                    │     (Dongle, BLE        │
+ │ Sends: 0/1 state  │                    │  BLE Peripheral)    │                    │      Central + USB HID) │
+ └──────────────────┘                    │ Reads joystick X/Y  │                    │ Sends HID to PC         │
+                                          │ Switches mode       │                    └─────────────┬──────────┘
+                                          └────────────────────┘                                  USB
+                                                                                                    │
+                                                                                                    ▼
+                                                                                           ┌─────────────────┐
+                                                                                           │      PC          │
+                                                                                           │ (Game receives   │
+                                                                                           │  HID input)      │
+                                                                                           └─────────────────┘
+
+
+Detailed Architecture Diagram (with roles & data flow)
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+   DEVICE 1: PUCK.JS BUTTON
+──────────────────────────────────────────────────────────────────────────────────────────────
+   • BLE Peripheral
+   • Exposes GATT service: ButtonService
+   • Characteristic: ButtonState (0 = released, 1 = pressed)
+   • No joystick logic — only a wireless button
+
+   Output:
+       ButtonState → sent via BLE to Joystick Unit
+──────────────────────────────────────────────────────────────────────────────────────────────
+
+                                      BLE LINK #1
+                    (ButtonState notifications: pressed / released)
+──────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+   DEVICE 2: JOYSTICK UNIT — XIAO nRF52840
+──────────────────────────────────────────────────────────────────────────────────────────────
+   Roles:
+   • BLE Central (connects to Puck.js)
+   • BLE Peripheral (advertises to Dongle)
+   • Reads analog joystick X/Y
+   • Switches between:
+         MODE 0 = Movement (WASD or left stick)
+         MODE 1 = Camera (mouse or right stick)
+
+   Internal Logic:
+       - Read Puck.js ButtonState
+       - If pressed → switch to Camera Mode
+       - If released → switch to Movement Mode
+       - Read joystick X/Y
+       - Build ControlPacket:
+             mode (0/1)
+             x (int16)
+             y (int16)
+       - Send ControlPacket to Dongle via BLE
+
+   Output:
+       ControlPacket → sent via BLE to Dongle
+──────────────────────────────────────────────────────────────────────────────────────────────
+
+                                      BLE LINK #2
+                     (ControlPacket: mode + joystick X/Y values)
+──────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+   DEVICE 3: DONGLE — XIAO nRF52840 SENSE
+──────────────────────────────────────────────────────────────────────────────────────────────
+   Roles:
+   • BLE Central (connects to Joystick Unit)
+   • USB HID Device (connected to PC)
+
+   Responsibilities:
+       - Receive ControlPacket from Joystick
+       - Convert to HID events:
+             If mode = Movement → WASD or Gamepad Left Stick
+             If mode = Camera   → Mouse movement or Gamepad Right Stick
+       - Send HID reports to PC via USB
+
+   Output:
+       HID Input → PC (mouse, keyboard, or gamepad)
+──────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────
+   DEVICE 4: PC (Game)
+──────────────────────────────────────────────────────────────────────────────────────────────
+   • Receives HID input from Dongle
+   • Moves character or camera based on mode
+──────────────────────────────────────────────────────────────────────────────────────────────
+
