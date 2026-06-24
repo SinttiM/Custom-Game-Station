@@ -1,0 +1,284 @@
+/*
+ * XIAO nRF52840 Sense — MOUSE & KEYBOARD DUAL MODE
+ * Features: -127 to +127 Integer Mapping, Wide Keyboard Deadzone, Hysteresis
+ */
+
+#include <bluefruit.h>
+#include <LSM6DS3.h>
+#include <Wire.h>
+
+// ── HID REPORT DESCRIPTOR ────────────────────
+uint8_t const desc_hid_report[] = {
+  TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID(1)),
+  TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(2))
+};
+
+BLEHidGeneric blehid(2, 0, 0);
+
+// ── IMU ──────────────────────────────────────
+LSM6DS3 imu(I2C_MODE, 0x6A);
+
+// ── CONNECTION STATE ──────────────────────────
+volatile int mode = 1;  // 0 = Mouse, 1 = Keyboard
+uint16_t pcConnHandle = BLE_CONN_HANDLE_INVALID;
+uint16_t puckHandle = BLE_CONN_HANDLE_INVALID;
+
+// ── KEYBOARD STATE VARIABLES ──────────────────
+bool isUpPressed = false;
+bool isDownPressed = false;
+bool isLeftPressed = false;
+bool isRightPressed = false;
+
+// ── DEFERRED GATT DISCOVERY ───────────────────
+volatile bool pendingPuckDiscovery = false;
+volatile uint32_t puckConnectedAt = 0;
+#define GATT_DISCOVERY_DELAY_MS 500
+
+// ── PUCK UUIDS ───────────────────────────────
+const uint8_t PUCK_SVC_UUID[] = {
+  0xee, 0x86, 0x7d, 0x8e, 0x90, 0xa4, 0x4f, 0x0a,
+  0x00, 0x0b, 0x00, 0x00, 0x0f, 0xf8, 0x71, 0xdf
+};
+const uint8_t PUCK_CHR_UUID[] = {
+  0xee, 0x86, 0x7d, 0x8e, 0x90, 0xa4, 0x4f, 0x0a,
+  0x00, 0x0b, 0x01, 0x00, 0x0f, 0xf8, 0x71, 0xdf
+};
+
+BLEClientService puckSvc(PUCK_SVC_UUID);
+BLEClientCharacteristic puckChar(PUCK_CHR_UUID);
+
+// ── HID SEND ──────────────────────────────────
+void sendMouse(int8_t x, int8_t y) {
+  if (pcConnHandle == BLE_CONN_HANDLE_INVALID) return;
+  hid_mouse_report_t r = { 0 };
+  r.x = x;
+  r.y = y;
+  blehid.inputReport(1, &r, sizeof(r));
+}
+
+void sendKeyboard() {
+  if (pcConnHandle == BLE_CONN_HANDLE_INVALID) return;
+
+  hid_keyboard_report_t r = { 0 };
+  int keyIndex = 0;
+
+  /*  if (isUpPressed && keyIndex < 6)    r.keycode[keyIndex++] = HID_KEY_ARROW_UP;
+  *if (isDownPressed && keyIndex < 6)  r.keycode[keyIndex++] = HID_KEY_ARROW_DOWN;
+  *if (isLeftPressed && keyIndex < 6)  r.keycode[keyIndex++] = HID_KEY_ARROW_LEFT;
+  *if (isRightPressed && keyIndex < 6) r.keycode[keyIndex++] = HID_KEY_ARROW_RIGHT;
+*/
+
+  if (isUpPressed && keyIndex < 6) r.keycode[keyIndex++] = HID_KEY_W;
+  if (isDownPressed && keyIndex < 6) r.keycode[keyIndex++] = HID_KEY_S;
+  if (isLeftPressed && keyIndex < 6) r.keycode[keyIndex++] = HID_KEY_A;
+  if (isRightPressed && keyIndex < 6) r.keycode[keyIndex++] = HID_KEY_D;
+
+  blehid.inputReport(2, &r, sizeof(r));
+}
+
+// ── PUCK NOTIFY CALLBACK ──────────────────────
+void notifyCb(BLEClientCharacteristic* chr, uint8_t* data, uint16_t len) {
+  if (len > 0) {
+    mode = data[0];
+    Serial.printf("[PUCK] Mode -> %d (%s)\n",
+                  mode, mode == 0 ? "MOUSE" : "KEYBOARD");
+
+    if (mode == 0) {
+      isUpPressed = isDownPressed = isLeftPressed = isRightPressed = false;
+      sendKeyboard();
+    }
+  }
+}
+
+// ── SCAN CALLBACK ─────────────────────────────
+void scanCb(ble_gap_evt_adv_report_t* report) {
+  uint8_t nameBuf[32] = { 0 };
+  uint8_t nameLen = Bluefruit.Scanner.parseReportByType(
+    report, BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME,
+    nameBuf, sizeof(nameBuf));
+
+  if (nameLen == 3 && memcmp(nameBuf, "Pck", 3) == 0) {
+    Serial.println("[SCAN] Found 'Pck', connecting...");
+    Bluefruit.Scanner.stop();
+    Bluefruit.Central.connect(report);
+    return;
+  }
+  Bluefruit.Scanner.resume();
+}
+
+// ── CONNECT CALLBACK ──────────────────────────
+void connectCb(uint16_t handle) {
+  BLEConnection* conn = Bluefruit.Connection(handle);
+  if (!conn) return;
+
+  if (conn->getRole() == BLE_GAP_ROLE_PERIPH) {
+    pcConnHandle = handle;
+    conn->requestConnectionParameter(6, 12);
+    Serial.println("[BLE] PC connected (HID host)");
+  } else {
+    puckHandle = handle;
+    Bluefruit.Scanner.stop();
+    conn->requestConnectionParameter(80, 160);
+    pendingPuckDiscovery = true;
+    puckConnectedAt = millis();
+    Serial.println("[BLE] Puck link up — discovery scheduled in 500ms");
+  }
+}
+
+// ── DISCONNECT CALLBACK ───────────────────────
+void disconnectCb(uint16_t handle, uint8_t reason) {
+  if (handle == pcConnHandle) {
+    pcConnHandle = BLE_CONN_HANDLE_INVALID;
+    isUpPressed = isDownPressed = isLeftPressed = isRightPressed = false;
+    Serial.printf("[BLE] PC disconnected (reason=0x%02X)\n", reason);
+    Bluefruit.Advertising.start(0);
+
+  } else if (handle == puckHandle) {
+    puckHandle = BLE_CONN_HANDLE_INVALID;
+    pendingPuckDiscovery = false;
+    Serial.printf("[BLE] Puck disconnected (reason=0x%02X)\n", reason);
+    Bluefruit.Scanner.start(0);
+  }
+}
+
+// ── SETUP ─────────────────────────────────────
+void setup() {
+  Serial.begin(115200);
+
+  Wire.begin();
+  Wire.setClock(400000);
+
+  if (imu.begin() != 0) {
+    Serial.println("[ERROR] IMU init failed");
+    while (1)
+      ;
+  }
+
+  Bluefruit.begin(1, 1);
+  Bluefruit.setName("XIAO-HID");
+
+  blehid.setReportMap(desc_hid_report, sizeof(desc_hid_report));
+  blehid.begin();
+
+  puckSvc.begin();
+  puckChar.begin();
+
+  Bluefruit.Periph.setConnectCallback(connectCb);
+  Bluefruit.Periph.setDisconnectCallback(disconnectCb);
+  Bluefruit.Central.setConnectCallback(connectCb);
+  Bluefruit.Central.setDisconnectCallback(disconnectCb);
+
+  Bluefruit.Advertising.addFlags(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
+  Bluefruit.Advertising.addAppearance(BLE_APPEARANCE_HID_MOUSE);
+  Bluefruit.Advertising.addService(blehid);
+  Bluefruit.Advertising.addName();
+  Bluefruit.Advertising.start(0);
+
+  Bluefruit.Scanner.setRxCallback(scanCb);
+  Bluefruit.Scanner.useActiveScan(true);
+  Bluefruit.Scanner.setInterval(160, 160);
+  Bluefruit.Scanner.start(0);
+
+  Serial.println("[SYSTEM] Ready");
+}
+
+// ── LOOP ──────────────────────────────────────
+void loop() {
+  static uint32_t lastPrintMs = 0;
+  static uint32_t sendCount = 0;
+  static uint32_t lastHidMs = 0;
+
+  if (millis() - lastPrintMs >= 1000) {
+    lastPrintMs = millis();
+    if (sendCount > 0) Serial.printf("[HID] %lu report/s\n", sendCount);
+    sendCount = 0;
+  }
+
+  if (pendingPuckDiscovery && (millis() - puckConnectedAt >= GATT_DISCOVERY_DELAY_MS)) {
+    pendingPuckDiscovery = false;
+    if (puckHandle != BLE_CONN_HANDLE_INVALID && puckSvc.discover(puckHandle) && puckChar.discover()) {
+      puckChar.setNotifyCallback(notifyCb);
+      puckChar.enableNotify();
+      Serial.println("[GATT] Puck discovery OK + notify enabled");
+    } else {
+      Serial.println("[GATT] Puck discovery failed — forcing reconnect");
+      if (puckHandle != BLE_CONN_HANDLE_INVALID) {
+        Bluefruit.disconnect(puckHandle);
+      }
+    }
+  }
+
+  // ── SENSOR READING AND PROCESSING @ ~66Hz ─────────────────
+  if (millis() - lastHidMs >= 15) {
+    lastHidMs = millis();
+
+    if (pcConnHandle == BLE_CONN_HANDLE_INVALID) return;
+
+    float ax = imu.readFloatAccelX();
+    float ay = imu.readFloatAccelY();
+
+    if (mode == 0) {
+      // ── MOUSE MODE ────────────────────────
+      float magnitude = sqrtf(ax * ax + ay * ay);
+      if (magnitude < 0.20f) {
+        ax = 0.0f;
+        ay = 0.0f;
+      } else {
+        float scale = (magnitude - 0.15f) / magnitude;
+        ax *= scale;
+        ay *= scale;
+      }
+
+      int moveX = (int)(ax * 60.0f);
+      int moveY = (int)(ay * 60.0f);
+
+      if (moveX != 0 || moveY != 0) {
+        int8_t fx = (int8_t)constrain(moveX, -127, 127);
+        int8_t fy = (int8_t)constrain(moveY, -127, 127);
+
+        sendMouse(-fx, fy);
+        sendCount++;
+      }
+    } else {
+      // ── KEYBOARD MODE (-127 / +127 Logic) ────────────────
+      // 1. Map raw acceleration data to an integer between -127 and +127
+      int valX = constrain((int)(ax * 127.0f), -127, 127);
+      int valY = constrain((int)(ay * 127.0f), -127, 127);
+
+      // 2. Deadzone Thresholds for Keyboard (on 0-127 scale)
+      const int KEY_PRESS_ZONE = 30;    // Net tilt required to press the key
+      const int KEY_RELEASE_ZONE = 15;  // Threshold to return to center to release the key
+
+      bool wantUp = false, wantDown = false, wantLeft = false, wantRight = false;
+
+      // 3. Y-Axis (Up/Down) Decisions
+      if (valY < -KEY_PRESS_ZONE) wantUp = true;
+      else if (valY > KEY_PRESS_ZONE) wantDown = true;
+
+      // Hysteresis
+      if (isUpPressed && valY < -KEY_RELEASE_ZONE) wantUp = true;
+      if (isDownPressed && valY > KEY_RELEASE_ZONE) wantDown = true;
+
+      // 4. X-Axis (Right/Left) Decisions
+      if (valX > KEY_PRESS_ZONE) wantLeft = true;
+      else if (valX < -KEY_PRESS_ZONE) wantRight = true;
+
+
+      // Hysteresis
+      if (isLeftPressed && valX < -KEY_RELEASE_ZONE) wantLeft = true;
+      if (isRightPressed && valX > KEY_RELEASE_ZONE) wantRight = true;
+
+      // 5. Send keyboard report if state has changed
+      if (wantUp != isUpPressed || wantDown != isDownPressed || wantLeft != isLeftPressed || wantRight != isRightPressed) {
+
+        isUpPressed = wantUp;
+        isDownPressed = wantDown;
+        isLeftPressed = wantLeft;
+        isRightPressed = wantRight;
+
+        sendKeyboard();
+        sendCount++;
+      }
+    }
+  }  // This brace closes the 15ms timer
+}  // This brace closes the loop function
