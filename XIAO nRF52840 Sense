@@ -62,12 +62,6 @@ void sendKeyboard() {
   hid_keyboard_report_t r = { 0 };
   int keyIndex = 0;
 
-  /*  if (isUpPressed && keyIndex < 6)    r.keycode[keyIndex++] = HID_KEY_ARROW_UP;
-  *if (isDownPressed && keyIndex < 6)  r.keycode[keyIndex++] = HID_KEY_ARROW_DOWN;
-  *if (isLeftPressed && keyIndex < 6)  r.keycode[keyIndex++] = HID_KEY_ARROW_LEFT;
-  *if (isRightPressed && keyIndex < 6) r.keycode[keyIndex++] = HID_KEY_ARROW_RIGHT;
-*/
-
   if (isUpPressed && keyIndex < 6) r.keycode[keyIndex++] = HID_KEY_W;
   if (isDownPressed && keyIndex < 6) r.keycode[keyIndex++] = HID_KEY_S;
   if (isLeftPressed && keyIndex < 6) r.keycode[keyIndex++] = HID_KEY_A;
@@ -208,7 +202,7 @@ void loop() {
     }
   }
 
-  // ── SENSOR READING AND PROCESSING @ ~66Hz ─────────────────
+    // ── SENSOR READING AND PROCESSING @ ~66Hz ─────────────────
   if (millis() - lastHidMs >= 15) {
     lastHidMs = millis();
 
@@ -219,18 +213,24 @@ void loop() {
 
     if (mode == 0) {
       // ── MOUSE MODE ────────────────────────
-      float magnitude = sqrtf(ax * ax + ay * ay);
-      if (magnitude < 0.20f) {
-        ax = 0.0f;
+
+      // Larger deadzone for DOWN movement
+      const float MOUSE_DEADZONE_UP = 0.10f;
+      const float MOUSE_DEADZONE_DOWN = 0.45f;
+
+      // Corrected Y deadzone logic
+      if (ay > -MOUSE_DEADZONE_UP && ay < MOUSE_DEADZONE_DOWN) {
         ay = 0.0f;
-      } else {
-        float scale = (magnitude - 0.15f) / magnitude;
-        ax *= scale;
-        ay *= scale;
       }
 
-      int moveX = (int)(ax * 60.0f);
-      int moveY = (int)(ay * 60.0f);
+      // X deadzone unchanged
+      const float MOUSE_DEADZONE_X = 0.33f;
+      if (fabs(ax) < MOUSE_DEADZONE_X) {
+        ax = 0.0f;
+      }
+
+      int moveX = (int)(ax * 30.0f);
+      int moveY = (int)(ay * 30.0f);
 
       if (moveX != 0 || moveY != 0) {
         int8_t fx = (int8_t)constrain(moveX, -127, 127);
@@ -239,37 +239,42 @@ void loop() {
         sendMouse(-fx, fy);
         sendCount++;
       }
+
     } else {
-      // ── KEYBOARD MODE (-127 / +127 Logic) ────────────────
-      // 1. Map raw acceleration data to an integer between -127 and +127
+      // ── KEYBOARD MODE ────────────────────────
+
       int valX = constrain((int)(ax * 127.0f), -127, 127);
       int valY = constrain((int)(ay * 127.0f), -127, 127);
 
-      // 2. Deadzone Thresholds for Keyboard (on 0-127 scale)
-      const int KEY_PRESS_ZONE = 30;    // Net tilt required to press the key
-      const int KEY_RELEASE_ZONE = 15;  // Threshold to return to center to release the key
+      // Larger deadzone for S
+      const int KEY_PRESS_UP = 20;    // W press threshold
+      const int KEY_PRESS_DOWN = 35;  // S press threshold
+
+      // FIXED HYSTERESIS (release thresholds must be LOWER)
+      const int KEY_RELEASE_UP = 10;    // W release threshold
+      const int KEY_RELEASE_DOWN = 20;  // S release threshold
 
       bool wantUp = false, wantDown = false, wantLeft = false, wantRight = false;
 
-      // 3. Y-Axis (Up/Down) Decisions
-      if (valY < -KEY_PRESS_ZONE) wantUp = true;
-      else if (valY > KEY_PRESS_ZONE) wantDown = true;
+      // Y-axis decisions
+      if (valY < -KEY_PRESS_UP) wantUp = true;
+      else if (valY > KEY_PRESS_DOWN) wantDown = true;
 
-      // Hysteresis
-      if (isUpPressed && valY < -KEY_RELEASE_ZONE) wantUp = true;
-      if (isDownPressed && valY > KEY_RELEASE_ZONE) wantDown = true;
+      // Correct hysteresis
+      if (isUpPressed && valY < -KEY_RELEASE_UP) wantUp = true;
+      if (isDownPressed && valY > KEY_RELEASE_DOWN) wantDown = true;
 
-      // 4. X-Axis (Right/Left) Decisions
+      const int KEY_PRESS_ZONE = 30;
+      const int KEY_RELEASE_ZONE = 15;
+
       if (valX > KEY_PRESS_ZONE) wantLeft = true;
       else if (valX < -KEY_PRESS_ZONE) wantRight = true;
 
-
-      // Hysteresis
       if (isLeftPressed && valX < -KEY_RELEASE_ZONE) wantLeft = true;
       if (isRightPressed && valX > KEY_RELEASE_ZONE) wantRight = true;
 
-      // 5. Send keyboard report if state has changed
-      if (wantUp != isUpPressed || wantDown != isDownPressed || wantLeft != isLeftPressed || wantRight != isRightPressed) {
+      if (wantUp != isUpPressed || wantDown != isDownPressed ||
+          wantLeft != isLeftPressed || wantRight != isRightPressed) {
 
         isUpPressed = wantUp;
         isDownPressed = wantDown;
@@ -280,5 +285,5 @@ void loop() {
         sendCount++;
       }
     }
-  }  // This brace closes the 15ms timer
-}  // This brace closes the loop function
+  } // closes 15ms timer
+} // closes loop()
