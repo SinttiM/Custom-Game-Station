@@ -1,6 +1,6 @@
 # User Manual
 
-## Firmware Flashing
+## Firmware Flashing for Puck.js
 
 If you have a new puck.js, you will have to flash the firmware onto it. You can do this by the following steps:
 
@@ -11,7 +11,32 @@ If you have a new puck.js, you will have to flash the firmware onto it. You can 
    1. When the process is done, a message should appear in the console log on the left side.
 6. **Disconnect** Puck.js from the Espruino IDE.
 
-## Pairing as Mouse/Keyboard
+## Firmware Flashing for Seeed XIAO nRF52840 Sense
+
+If you have a new XIAO board, you will have to flash the firmware onto it. You can do this by the following steps:
+1. Download [Arduino IDE](https://support.arduino.cc/hc/en-us/articles/360019833020-Download-and-install-Arduino-IDE).
+2. Make sure that you have downloaded additional board manager URL's as shown below. Copy this [link](https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json) to the selected area.
+
+   <img width="1920" height="1019" alt="image" src="https://github.com/user-attachments/assets/97c98c7e-48f7-431e-b9ad-b887127c038c" />
+
+3. Download **Seeed nRF52 Boards** package, through Tools-> Board-> Boards Manager as shown below.
+   <img width="402" height="453" alt="image" src="https://github.com/user-attachments/assets/f9990ed4-7f0f-4b3e-a44f-5516aa1954bb" />
+4. Once the download is done, select the correct board through **Tools-> Board-> Seeed nRF52 Boards-> Seeed XIAO nRF52840 Sense**
+   <img width="1920" height="1020" alt="image" src="https://github.com/user-attachments/assets/8c33510b-b68b-450b-a8e5-3317a5d6df37" />
+   
+5. When the download finishes, you are supposed to download library files for the accelerometer and gyroscope. For this, go on **Sketch-> Include Library-> Manage Libraries** and download **Seeed Arduino LSM6DS3** library.
+   <img width="401" height="509" alt="image" src="https://github.com/user-attachments/assets/31cc7c5b-8248-4a49-8c49-13245b27d5d7" />
+
+6. When the download process is completed, you have to press _RST_ button twice, quickly on the XIAO board to make it ready to upload firmware.
+   
+   <img width="408" height="445" alt="image" src="https://github.com/user-attachments/assets/a5db4661-7a52-4baa-b548-4ce45c6cb4b5" />
+
+8.  Copy this [code](https://raw.githubusercontent.com/SinttiM/Custom-Game-Station/refs/heads/main/XIAO%20nRF52840%20Sense), and paste it to the Arduino IDE, then click upload icon as attached below.
+   
+   <img width="659" height="200" alt="image" src="https://github.com/user-attachments/assets/15131c4d-98f4-4949-b8f9-09445e64bd77" />
+
+9. When the download process is completed, your Game-Station is ready to be used. All you need to do is to connect the joystick to the PC that you want to play games, via Bluetooth. Advertising name for the device **XIAO-HID**. You can connect your PC as attached below, and then you can start using the joystick.
+    <img width="678" height="213" alt="image" src="https://github.com/user-attachments/assets/d3550c94-101c-4bb6-a89f-dfe52703b5e4" />
 
 In order to use the custom game station as a **mouse/keyboard** device you must **pair** it as a **Bluetooth device in the OS Bluetooth device manager**.
 
