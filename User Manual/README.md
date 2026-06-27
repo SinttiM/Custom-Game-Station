@@ -24,53 +24,49 @@ Now the Game-Station is ready to be used.
 
 Follow these instructions to correctly assemble and install the Custom Game Station on the wheelchair.
 
-### 1. Component Assembly
-
-1. **Joystick Core:** Insert the **Puck.js** microcontroller into the **Joystick Body**. Secure the assembly by snapping the **Joystick Cap** on top.
-2. Put a silicon cover onto the joystick top to make it **waterproof**.
-3. **Wiring & Connectivity:** Follow the established color code to connect the internal joystick wires.
-4. **Side Control:** Attach the **Side Knee Button** to the **Side Holder**.
-
-### 2. Wheelchair Preparation
+### 1. Wheelchair Preparation
 
 * **Removal:** Carefully remove the original joystick handle from the wheelchair's joystick shaft.
 
-### 3. Final Installation & Securing
+### 2. Component Assembly
 
-* **Joystick:** Slide the new 3D-printed cover onto the joystick rod.
-* **Top Cover:** Position the cover firmly onto the joystick base. To prevent movement and ensure a stable fit, attach two elastic bands to the lateral hooks:
-    * One elastic band around the back side of the joystick base.
-    * The second elastic band underneath the base.
-* **Side Button Mounting:** Install the Side Holder onto the inner frame of the wheelchair. Adjust the screw to rotate and fix the button in the user's desired ergonomic position.
-* **Final Connection:** Plug the cable from the side knee button into the main cover socket.
+1. Place the elastic band over the wheelchair joystick shaft.
+2. Hold the elastic band in place and press the custom joystick onto the shaft so that the marked dot points forward from the user's perspective.
+3. Turn the joystick power switch **ON (Position 1)**.
+    * In the center position and **Position 2**, the joystick is disconnected from the battery.
+4. **Charging the device (optional):**
+    * Attach the magnetic charging cable to the bottom of the joystick.
+    * Connect the USB end to a computer.
+    * Ensure that the joystick power switch is in **Position 1** so the battery is connected and charging can occur.
+5. Attach the **Knee Button Holder** underneath the wheelchair control unit and secure it using the bolt.
+6. Insert the **Puck.js** into its designated slot inside the **Knee Button Holder**.
 
-## Operation Modes
+### 3. Computer Preparation
 
-The joystick tilt can be translated to **mouse movement** or **WASD keypresses** and hence be used in different game actions.
-The buttons support button press patterns and two types of press durations: 
-* **Short-Press & Release**
-* **Long-Press & Release**: Duration > 800ms.
+1. Enable **Bluetooth** on the computer.
+2. Connect to the new device named **XIAO-HID**.
+3. Once connected, the system is ready for use.
 
-<img src="../Photos/IMG_3863.png" width="34%">
+### 4. Operation Modes
 
-### Calibration
+#### Joystick Mode
 
-Some wheelchair joysticks have a tilted zero position. In such a case the zero position must be calibrated to ensure proper operation:
+The joystick emulates keyboard movement controls:
 
-* **Long-Press** the Top Button (T) and release it.
+* Move **up** → Presses **W**
+* Move **down** → Presses **S**
+* Move **right** → Presses **D**
+* Move **left** → Presses **A**
 
-It is also possible to perform the calibration at anytime.
+#### Mouse Mode
 
-## Top Button (S)
+* Press and hold the **Puck.js** button to switch joystick functionality into **mouse control mode**.
 
-The Top Button supports the following actions:
+### 5. Recommended Accessories
 
-* **Short-Press**: <kbd>Tab</kbd> 
-* **Long-Press**: Calibration
+For an improved gaming experience, additional external buttons are recommended for:
 
-### Side-knee-button
+1. **Jump**
+2. **Crouch**
+3. **Object Selection / Interaction**
 
-* **Short-Press**: Left Mouse Click 
-* **Long-Press**: Change of Mode
-  * **Mouse movement**: The joystick tilt is translated into mouse movement. The mouse speed is according to the actual tilt level of the joystick.
-  * **Hold of WASD keys**: <kbd>w</kbd>, <kbd>a</kbd>, <kbd>s</kbd>, <kbd>d</kbd> depending on joystick tilt direction.
