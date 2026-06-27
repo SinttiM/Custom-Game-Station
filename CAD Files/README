@@ -1,1 +1,21 @@
-Copy te text here
+Information on CAD Files
+Joystick main body V2.0.stl 
+– 3D CAD file produced using Autodesk Fusion 360 2026
+Joystick main body v2.0_0.6n_0.25mm_PLA_MK4S_1h0m.bgcode 
+– G-code file produced using PrusaSlicer 2.9.5
+Joystick cap.stl 
+– Legacy STL file by Group Trentino. The component was re-used as the current Joystick body designed to be reverse compatible with it
+Side holder.stl 
+– Legacy STL file by Group Trentino. The component was re-used
+
+3D Printing Protocols & Slice Metrics
+•	Hardware : Prusa MK4S 3D Printer
+•	Nozzle : 0.6mm
+•	Slicing Engine: PrusaSlicer 2.9.5.
+•	Slicing Profile: 0.25mm Speed Layer Height.
+•	Filament Profile: Extrudr GreenTEC Pro  (PLA)
+
+Production Metrics:
+o	Total Filament Consumed: 45.66 grams
+o	Total Printing Execution Time: 1 Hour
+o	Calculated Net Material Cost: €2.57
