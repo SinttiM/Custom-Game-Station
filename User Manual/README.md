@@ -69,4 +69,4 @@ For an improved gaming experience, additional external buttons are recommended f
 1. **Jump**
 2. **Crouch**
 3. **Object Selection / Interaction**
-4. 
+
