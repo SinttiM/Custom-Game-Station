@@ -1,0 +1,81 @@
+/*
+ * Puck.js — Mode Controller (FINAL v4)
+ *
+ * Changes:
+ *  - Hold button = MOUSE, release = GAMEPAD
+ *  - Advertising interval 500ms for power saving
+ */
+
+var currentMode = 1; // 1 = Gamepad, 0 = Mouse
+
+function sendMode() {
+  NRF.updateServices({
+    "df71f80f-0000-0b00-0a4f-a4908e7d86ee": {
+      "df71f80f-0001-0b00-0a4f-a4908e7d86ee": {
+        value: [currentMode],
+        notify: true
+      }
+    }
+  });
+}
+
+function onInit() {
+  clearWatch();
+
+  NRF.setServices({
+    "df71f80f-0000-0b00-0a4f-a4908e7d86ee": {
+      "df71f80f-0001-0b00-0a4f-a4908e7d86ee": {
+        value: [currentMode],
+        readable: true,
+        notify: true,
+        description: "Mode"
+      }
+    }
+  });
+
+  NRF.setAdvertising({}, {
+    name: "Pck",
+    showName: true,
+    discoverable: true,
+    connectable: true,
+    interval: 500
+  });
+
+  NRF.on('connect', function(addr) {
+    digitalPulse(LED2, 1, 200);
+    console.log("Connected: " + addr);
+    NRF.setConnectionInterval({ minInterval: 100, maxInterval: 200 });
+    sendMode();
+    console.log("Sent initial mode: " + (currentMode === 1 ? "GAMEPAD" : "MOUSE"));
+  });
+
+  NRF.on('disconnect', function() {
+    digitalPulse(LED1, 1, 200);
+    console.log("Disconnected");
+  });
+
+  // Button pressed down — switch to MOUSE
+  setWatch(function() {
+    currentMode = 0;
+    digitalPulse(LED1, 1, 150);
+    if (NRF.getSecurityStatus().connected) {
+      sendMode();
+      console.log("Mode -> MOUSE (held)");
+    }
+  }, BTN, { repeat: true, edge: 'rising', debounce: 50 });
+
+  // Button released — switch back to GAMEPAD
+  setWatch(function() {
+    currentMode = 1;
+    digitalPulse(LED2, 1, 150);
+    if (NRF.getSecurityStatus().connected) {
+      sendMode();
+      console.log("Mode -> GAMEPAD (released)");
+    }
+  }, BTN, { repeat: true, edge: 'falling', debounce: 50 });
+
+  console.log("Ready. Mode: " + (currentMode === 1 ? "GAMEPAD" : "MOUSE"));
+}
+
+E.on('init', onInit);
+onInit();
